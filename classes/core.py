@@ -4,26 +4,29 @@ from jira import JIRA, JIRAError
 import config
 import time
 
-jira = JIRA(basic_auth=(config.user, config.apikey), options={"server": config.instance})
+# jira = JIRA(basic_auth=(config.user, config.apikey), options={"server": config.instance})
+jira = JIRA(token_auth=config.apikey, server=config.instance)
 
 
 class IssueCollector:
 
-    block_num = 0
+    # block_num = 0
     prom_output = {}
 
     @classmethod
     def search(self, jql):
 
         # Search Jira API
-        block_size = 100
-        result = jira.search_issues(
-            jql,
-            startAt=self.block_num * block_size,
-            maxResults=block_size,
-            fields="project, summary, components, labels, status, issuetype, resolution, created, resolutiondate, reporter, assignee, status",
-        )
-
+        result=[]
+        i = 0
+        chunk_size = 1000
+        fields="project, summary, components, labels, status, issuetype, resolution, created, resolutiondate, reporter, assignee, status, timespent"
+        while True:
+            chunk = jira.search_issues(jql, startAt=i, maxResults=chunk_size, fields=fields)
+            i += chunk_size
+            result += chunk.iterable
+            if i >= chunk.total:
+                break
         return result
 
     @classmethod
@@ -38,7 +41,7 @@ class IssueCollector:
             while bool(result):
 
                 for issue in result:
-
+                    print(issue)
                     # Assign Jira attributes to variables
                     project = str(issue.fields.project)
                     assignee = str(issue.fields.assignee)
@@ -71,9 +74,9 @@ class IssueCollector:
                         prom_label.append("None")
                     prom_labels.append(prom_label)
                 # Increment the results via pagination
-                self.block_num += 1
-                time.sleep(2)
-                result = IssueCollector.search(config.jql)
+                # self.block_num += 1
+                # time.sleep(2)
+                # result = IssueCollector.search(config.jql)
             jira.close()
 
             # Convert nested lists into a list of tuples, so that we may hash and count duplicates

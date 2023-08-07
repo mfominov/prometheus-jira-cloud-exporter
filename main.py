@@ -8,7 +8,7 @@ if __name__ == "__main__":
 
     # Start the webserver, search Jira, and register the issue collector
     start_http_server(8000)
-    IssueCollector.construct(str(config.jql))
+    # IssueCollector.construct(str(config.jql))
     REGISTRY.register(IssueCollector())
     while True:
         time.sleep(int(config.interval))
